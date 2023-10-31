@@ -66,8 +66,10 @@ class Interpreter(InterpreterBase):
 				print("Running function: {}".format(function_node))
     
 			self.frames.append({})
+
+			# We don't call the set_variable function here because we don't want to shadow variables
 			for i in range(len(args)):
-				self.set_variable(function_node.get("args")[i].get("name"), self.evaluate_expression(args[i]))
+				self.frames[-1][function_node.get("args")[i].get("name")] = self.evaluate_expression(args[i])
 			for statement_node in function_node.get("statements"):
 				ret = self.run_statement(statement_node)
 				if ret != None:
@@ -81,6 +83,7 @@ class Interpreter(InterpreterBase):
 	def print(self, args):
 		eval_args = [self.evaluate_expression(arg) for arg in args]
 		string_args = [str(arg.get("val")) for arg in eval_args]
+		string_args = [arg.lower() if arg == "True" or arg == "False" else arg for arg in string_args]
 		super().output(''.join(string_args))
   
 	def print_frames(self):
@@ -103,8 +106,13 @@ class Interpreter(InterpreterBase):
 			return self.run_while(statement_node)
 
 	def run_while(self, while_node):
-		condition = while_node.get("condition")
+		if self.trace_output:
+				print("Running while: {}".format(while_node))
+		condition = self.evaluate_expression(while_node.get("condition"))
+		if condition.elem_type != InterpreterBase.BOOL_DEF:
+			super().error(ErrorType.TYPE_ERROR, "Type mismatch on while condition: {}".format(condition.elem_type))
 		self.frames.append({})
+  
 		while self.evaluate_expression(condition).get("val"):
 			for statement_node in while_node.get("statements"):
 				ret = self.run_statement(statement_node)
@@ -118,6 +126,8 @@ class Interpreter(InterpreterBase):
 		if self.trace_output:
 				print("Running if: {}".format(if_node))
 		condition = self.evaluate_expression(if_node.get("condition"))
+		if condition.elem_type != InterpreterBase.BOOL_DEF:
+			super().error(ErrorType.TYPE_ERROR, "Type mismatch on if condition: {}".format(condition.elem_type))
 		self.frames.append({})
   
 		if condition.get("val"):
@@ -198,16 +208,28 @@ class Interpreter(InterpreterBase):
 						super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") or op2.get("val")))
 				case "==":
+					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") == op2.get("val")))
 				case "!=":
+					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") != op2.get("val")))
 				case "<":
+					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") < op2.get("val")))
 				case ">":
+					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") > op2.get("val")))
 				case "<=":
+					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") <= op2.get("val")))
 				case ">=":
+					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
 					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") >= op2.get("val")))
 				
 		elif expression_node.elem_type in self.unary_ops:
@@ -230,10 +252,19 @@ class Interpreter(InterpreterBase):
 		self.functions["{}-{}".format(func.get("name"), len(func.get("args")))] = func
   
 	def get_function(self, func_name, num_args):
-		return self.functions["{}-{}".format(func_name, num_args)]
+		if self.functions.get("{}-{}".format(func_name, num_args)) != None:
+			return self.functions["{}-{}".format(func_name, num_args)]
+		else:
+			super().error(ErrorType.NAME_ERROR, "Unknown Function Referenced: {}, taking {} args".format(func_name, num_args))
   
 	def set_variable(self, var_name, value):
-		self.frames[-1][var_name] = value
+		var = None
+		for frame in self.frames[::-1]:
+			if frame.get(var_name) != None:
+				frame[var_name] = value
+				break
+		if var == None:
+			self.frames[-1][var_name] = value
   
 	def get_variable(self, var_name):
 		var = None
