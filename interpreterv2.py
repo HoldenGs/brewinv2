@@ -73,6 +73,7 @@ class Interpreter(InterpreterBase):
 					self.frames.pop()
 					return ret
 			self.frames.pop()
+			return Element(InterpreterBase.NIL_DEF)
    
 		else:
 			super().error(ErrorType.NAME_ERROR, "Unknown Function Referenced: {}, taking {} args".format(f_name, len(args)))
@@ -112,7 +113,10 @@ class Interpreter(InterpreterBase):
 		elif statement_node.elem_type == InterpreterBase.FCALL_DEF:
 			return self.run_function(statement_node)
 		elif statement_node.elem_type == InterpreterBase.RETURN_DEF:
-			return self.evaluate_expression(statement_node.get("expression"))
+			if statement_node.get("expression") != None:
+				return self.evaluate_expression(statement_node.get("expression"))
+			else:
+				return Element(InterpreterBase.NIL_DEF)
 		elif statement_node.elem_type == InterpreterBase.IF_DEF:
 			return self.run_if(statement_node)
 		elif statement_node.elem_type == InterpreterBase.WHILE_DEF:
@@ -188,64 +192,8 @@ class Interpreter(InterpreterBase):
 				return Element(InterpreterBase.BOOL_DEF, val=expression_node.get("val"))
 			case "nil":
 				return Element(InterpreterBase.NIL_DEF, val=expression_node.get("val"))
-
-		if expression_node.elem_type in self.binary_ops:
-			#print("binary op {} between {} and {}".format(expression_node.elem_type, expression_node.get("op1"), expression_node.get("op2")))
-			op1 = self.evaluate_expression(expression_node.get("op1"))
-			op2 = self.evaluate_expression(expression_node.get("op2"))
-			if op1.elem_type != op2.elem_type:
-				super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
-			match expression_node.elem_type:
-				case "+":
-					if op1.elem_type not in [InterpreterBase.INT_DEF, InterpreterBase.STRING_DEF]:
-						super().error(ErrorType.TYPE_ERROR, "Unsupported type {} for binary operator '{}'".format(op1.elem_type, expression_node.elem_type))
-					sum = op1.get("val") + op2.get("val")
-					return Element(op1.elem_type, val=sum)
-				case "-":
-					diff = op1.get("val") - op2.get("val")
-					return Element(InterpreterBase.INT_DEF, val=diff)
-				case "*":
-					prod = op1.get("val") * op2.get("val")
-					return Element(InterpreterBase.INT_DEF, val=prod)
-				case "/":
-					if op2.get("val") == 0:
-						super().error(ErrorType.FAULT_ERROR, "Division by zero")
-					quot = op1.get("val") // op2.get("val")
-					return Element(InterpreterBase.INT_DEF, val=quot)
-				case "&&":
-					if op1.elem_type != InterpreterBase.BOOL_DEF or op2.elem_type != InterpreterBase.BOOL_DEF:
-						super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") and op2.get("val")))
-				case "||":
-					if op1.elem_type != InterpreterBase.BOOL_DEF or op2.elem_type != InterpreterBase.BOOL_DEF:
-						super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") or op2.get("val")))
-				case "==":
-					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
-						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") == op2.get("val")))
-				case "!=":
-					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
-						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") != op2.get("val")))
-				case "<":
-					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
-						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") < op2.get("val")))
-				case ">":
-					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
-						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") > op2.get("val")))
-				case "<=":
-					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
-						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") <= op2.get("val")))
-				case ">=":
-					if op1.elem_type not in {InterpreterBase.INT_DEF, InterpreterBase.BOOL_DEF}:
-						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
-					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") >= op2.get("val")))
-				
-		elif expression_node.elem_type in self.unary_ops:
+		
+		if expression_node.elem_type in self.unary_ops:
 			op = self.evaluate_expression(expression_node.get("op1"))
 			match expression_node.elem_type:
 				case InterpreterBase.NOT_DEF:
@@ -256,6 +204,67 @@ class Interpreter(InterpreterBase):
 					if op.elem_type != InterpreterBase.INT_DEF:
 						super().error(ErrorType.TYPE_ERROR, "Type mismatch on unary operation: {} {}".format(expression_node.elem_type, op.get("val")))
 					return Element(InterpreterBase.INT_DEF, val=(-op.get("val")))
+ 
+		elif expression_node.elem_type in self.binary_ops:
+			op1 = self.evaluate_expression(expression_node.get("op1"))
+			op2 = self.evaluate_expression(expression_node.get("op2"))
+   
+			# Special case for equality / ineqality operators - we don't need to check for type equality
+			if expression_node.elem_type == "==":
+				return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") == op2.get("val")))
+			elif expression_node.elem_type == "!=":
+				return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") != op2.get("val")))
+
+			if op1.elem_type != op2.elem_type:
+				super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
+			match expression_node.elem_type:
+				case "+":
+					if op1.elem_type not in [InterpreterBase.INT_DEF, InterpreterBase.STRING_DEF]:
+						super().error(ErrorType.TYPE_ERROR, "Unsupported type {} for binary operator '{}'".format(op1.elem_type, expression_node.elem_type))
+					sum = op1.get("val") + op2.get("val")
+					return Element(op1.elem_type, val=sum)
+				case "-":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Unsupported type {} for binary operator '{}'".format(op1.elem_type, expression_node.elem_type))
+					diff = op1.get("val") - op2.get("val")
+					return Element(InterpreterBase.INT_DEF, val=diff)
+				case "*":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Unsupported type {} for binary operator '{}'".format(op1.elem_type, expression_node.elem_type))
+					prod = op1.get("val") * op2.get("val")
+					return Element(InterpreterBase.INT_DEF, val=prod)
+				case "/":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Unsupported type {} for binary operator '{}'".format(op1.elem_type, expression_node.elem_type))
+					if op2.get("val") == 0:
+						super().error(ErrorType.FAULT_ERROR, "Division by zero")
+					quot = op1.get("val") // op2.get("val")
+					return Element(InterpreterBase.INT_DEF, val=quot)
+				case "&&":
+					if op1.elem_type != InterpreterBase.BOOL_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
+					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") and op2.get("val")))
+				case "||":
+					if op1.elem_type != InterpreterBase.BOOL_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Type mismatch on binary operation between {} and {}: {} {} {}".format(op1.elem_type, op2.elem_type, op1.get("val"), expression_node.elem_type, op2.get("val")))
+					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") or op2.get("val")))
+				case "<":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
+					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") < op2.get("val")))
+				case ">":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
+					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") > op2.get("val")))
+				case "<=":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
+					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") <= op2.get("val")))
+				case ">=":
+					if op1.elem_type != InterpreterBase.INT_DEF:
+						super().error(ErrorType.TYPE_ERROR, "Comparison not supported for type: {}".format(op1.elem_type))
+					return Element(InterpreterBase.BOOL_DEF, val=(op1.get("val") >= op2.get("val")))
+ 
 		else:
 			super().error(ErrorType.TYPE_ERROR, "Unknown expression type: {}".format(expression_node.elem_type))
 
