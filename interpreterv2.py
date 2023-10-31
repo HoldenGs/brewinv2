@@ -47,13 +47,10 @@ class Interpreter(InterpreterBase):
 		args = function_node.get("args")
 
 		if f_name == "inputi":
-      
-			if len(args) > 1:
-				super().error(ErrorType.NAME_ERROR, f"No inputi() function found that takes > 1 parameter")
-			elif len(args) == 1:
-				super().output(self.evaluate_expression(args[0]).get("val"))
-	
-			return Element(InterpreterBase.INT_DEF, val=int(super().get_input()))
+			return self.inputi(args)
+
+		elif f_name == "inputs":
+			return self.inputs(args)
 
 		elif f_name == "print":
 			self.print(args)
@@ -80,6 +77,22 @@ class Interpreter(InterpreterBase):
 		else:
 			super().error(ErrorType.NAME_ERROR, "Unknown Function Referenced: {}, taking {} args".format(f_name, len(args)))
    
+	def inputi(self, args):
+		if len(args) > 1:
+				super().error(ErrorType.NAME_ERROR, f"No inputi() function found that takes > 1 parameter")
+		elif len(args) == 1:
+			super().output(self.evaluate_expression(args[0]).get("val"))
+
+		return Element(InterpreterBase.INT_DEF, val=int(super().get_input()))
+
+	def inputs(self, args):
+		if len(args) > 1:
+			super().error(ErrorType.NAME_ERROR, f"No inputs() function found that takes > 1 parameter")
+		elif len(args) == 1:
+			super().output(self.evaluate_expression(args[0]).get("val"))
+
+		return Element(InterpreterBase.STRING_DEF, val=str(super().get_input()))
+
 	def print(self, args):
 		eval_args = [self.evaluate_expression(arg) for arg in args]
 		string_args = [str(arg.get("val")) for arg in eval_args]
