@@ -56,7 +56,7 @@ class Interpreter(InterpreterBase):
    
 		elif self.get_function(f_name, len(args)) != None:
 			self.recursion_depth += 1
-			if self.recursion_depth > 100:
+			if self.recursion_depth > 1000:
 				super().error(ErrorType.FAULT_ERROR, "Recursion depth exceeded")
 			function_node = self.get_function(f_name, len(args))
 			if self.trace_output:
@@ -170,7 +170,7 @@ class Interpreter(InterpreterBase):
 		expression_node = statement_node.get("expression")
 		var_name = statement_node.get("name")
 
-		if expression_node.elem_type in self.binary_ops:
+		if expression_node.elem_type in self.binary_ops or expression_node.elem_type in self.unary_ops:
 			val = self.evaluate_expression(expression_node)
 			self.set_variable(var_name, val)
 		elif expression_node.elem_type in self.types:
@@ -308,11 +308,11 @@ from enum import Enum
 
 
 # Enumerated type for our different language data types
-class Type(Enum):
-	INT = 1
-	BOOL = 2
-	STRING = 3
-	NIL = 4
+# class Type(Enum):
+# 	INT = 1
+# 	BOOL = 2
+# 	STRING = 3
+# 	NIL = 4
 
 
 # Represents a value, which has a type and its value
