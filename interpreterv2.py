@@ -216,6 +216,8 @@ class Interpreter(InterpreterBase):
    
 			# Special case for equality / ineqality operators - we don't need to check for type equality
 			if expression_node.elem_type == "==":
+				if op1.type() != op2.type():
+					return Value(InterpreterBase.BOOL_DEF, val=False)
 				return Value(InterpreterBase.BOOL_DEF, val=(op1.val() == op2.val()))
 			elif expression_node.elem_type == "!=":
 				return Value(InterpreterBase.BOOL_DEF, val=(op1.val() != op2.val()))
@@ -326,10 +328,10 @@ class Value:
 		return self.v
 
 	def type(self):
-		return self.t
+		return self.elem_type
 
 	def set(self, other):
-		self.t = other.t
+		self.elem_type = other.elem_type
 		self.v = other.v
   
 	def ret(self):
