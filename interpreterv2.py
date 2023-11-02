@@ -56,7 +56,7 @@ class Interpreter(InterpreterBase):
    
 		elif self.get_function(f_name, len(args)) != None:
 			self.recursion_depth += 1
-			if self.recursion_depth > 1000:
+			if self.recursion_depth > 100:
 				super().error(ErrorType.FAULT_ERROR, "Recursion depth exceeded")
 			function_node = self.get_function(f_name, len(args))
 			if self.trace_output:
@@ -83,6 +83,7 @@ class Interpreter(InterpreterBase):
 		if self.trace_output:
 				print("Running while: {}".format(while_node))
 		condition = self.evaluate_expression(while_node.get("condition"))
+
 		if condition.elem_type != InterpreterBase.BOOL_DEF:
 			super().error(ErrorType.TYPE_ERROR, "Type mismatch on while condition: {}".format(condition.elem_type))
 		self.frames.append({})
@@ -171,8 +172,7 @@ class Interpreter(InterpreterBase):
 		var_name = statement_node.get("name")
 
 		if expression_node.elem_type in self.binary_ops or expression_node.elem_type in self.unary_ops:
-			val = self.evaluate_expression(expression_node)
-			self.set_variable(var_name, val)
+			self.set_variable(var_name, self.evaluate_expression(expression_node))
 		elif expression_node.elem_type in self.types:
 			self.set_variable(var_name, self.evaluate_expression(expression_node))
 		elif expression_node.elem_type == "fcall":
@@ -220,6 +220,8 @@ class Interpreter(InterpreterBase):
 					return Value(InterpreterBase.BOOL_DEF, val=False)
 				return Value(InterpreterBase.BOOL_DEF, val=(op1.val() == op2.val()))
 			elif expression_node.elem_type == "!=":
+				if op1.type() != op2.type():
+					return Value(InterpreterBase.BOOL_DEF, val=True)
 				return Value(InterpreterBase.BOOL_DEF, val=(op1.val() != op2.val()))
 
 			if op1.elem_type != op2.elem_type:
@@ -287,13 +289,11 @@ class Interpreter(InterpreterBase):
 			super().error(ErrorType.NAME_ERROR, "Unknown Function Referenced: {}, taking {} args".format(func_name, num_args))
   
 	def set_variable(self, var_name, value):
-		var = None
 		for frame in self.frames[::-1]:
 			if frame.get(var_name) != None:
 				frame[var_name] = value
-				break
-		if var == None:
-			self.frames[-1][var_name] = value
+				return
+		self.frames[-1][var_name] = value
   
 	def get_variable(self, var_name):
 		var = None
