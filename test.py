@@ -6,16 +6,31 @@ def main():
 	# just as shown here.
 	program_source = """
 func main() {
- print(fib(5));
+    
+    print(catalan(5));
+	
 }
 
-func fib(n) {
- if (n < 3) {
-  return 1;
- } else {
-  return fib(n-2) + fib(n-1);
- }
+func catalan(n)
+{
+    if (n <= 1)
+    {
+        return 1;
+    }
+    
+    i = 0;
+    res = 0;
+    while (i < n)
+    {
+        tmp = catalan(i);
+        res = res + tmp;
+        i = i + 1;
+    }
+    
+    return res;
+    
 }
+
 	"""
 	
 	interp = Interpreter(trace_output=False)
